@@ -26,6 +26,7 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
     [auth_backend],
 )
 
+current_active_user = fastapi_users.current_user(active=True)
 
 def include_auth_router(app: FastAPI) -> None:
     """

@@ -1,8 +1,9 @@
 import uvicorn
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.auth import include_auth_router, fastapi_users
+from app.auth import include_auth_router, current_active_user
 from app.config import BACK_HOST, BACK_PORT
 from app.models.models import User
 
@@ -23,7 +24,23 @@ app.add_middleware(
 # Подключаем роуты из внешних источников
 include_auth_router(app)
 
-current_user = fastapi_users.current_user()
+
+# @app.on_event("startup")
+# async def startup():
+#     await database.connect()
+#
+#
+# @app.on_event("shutdown")
+# async def shutdown():
+#     await database.disconnect()
+
+
+@app.exception_handler(ValueError)
+async def value_error_exception_handler(request: Request, exc: ValueError):
+    return JSONResponse(
+        status_code=400,
+        content={"message": str(exc)},
+    )
 
 
 @app.head("/")
@@ -37,12 +54,12 @@ def get_root():
 
 
 @app.post("/")
-def post_root(ddd):
+def post_root():
     return {"Hello": "World", "Method": "post"}
 
 
 @app.get("/current-user")
-def protected_route(user: User = Depends(current_user)):
+def protected_route(user: User = Depends(current_active_user)):
     return {user}
 
 
