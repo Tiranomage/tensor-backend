@@ -1,0 +1,86 @@
+@startuml
+entity users {
++ id : uuid
++ email : str
++ hashed_password : str
++ external : json
++ ...
+}
+
+package "Чаты" {
+    entity chats {
+    + id : uuid
+    + parent : uuid
+    + type : enum
+    + external : json
+    }
+
+    'Текущие участники чата
+    entity user_chats {
+    + id : uuid
+    + chat_id : uuid
+    + user_id : uuid
+    + role : enum
+    }
+
+    entity messages {
+    + id : uuid
+    + chat_id : uuid
+    + user_id : uuid
+    + type : enum
+    + external : json
+    }
+}
+
+package "Интересы" {
+    'Категории интересов (Музыкаб Жанры кино, Спорт)
+    entity categories {
+    + id : uuid
+    + title : str
+    + external : json
+    }
+
+    'Интересы теги
+    entity tags {
+    + id : uuid
+    + category_id : uuid
+    + tag : str
+    }
+
+    entity user_tags {
+    + id : uuid
+    + user_id : uuid
+    + tag_id : uuid
+    }
+
+    entity chat_tags {
+    + id : uuid
+    + chat_id : uuid
+    + tag_id : uuid
+    }
+}
+
+'Связи объектов
+'chats::parent --> chats::id
+messages::chat_id --> chats::id
+messages::user_id --> users::id
+user_chats::chat_id --> chats::id
+user_chats::user_id --> users::id
+
+tags::category_id --> categories::id
+chat_tags::chat_id --> chats::id
+chat_tags::tag_id --> tags::id
+user_tags::user_id --> users::id
+user_tags::tag_id --> tags::id
+
+'note left of messages::type
+'    Возможно, везде правильно type объекта вынести из json'на
+'    Так удобнее на бэкенде подтягивать класс для обработки объекта
+'end note
+'
+'note left of messages::external
+'    Возможно, для единообразия все json-поля со
+'    сборной солянкой внутри стоит называть одинаково - external
+'end note
+
+@enduml
