@@ -5,13 +5,13 @@ from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin
 from fastapi_users.db import SQLAlchemyUserDatabase
 
-from app.config import JWT_SECRET
+from app.config import app_settings
 from app.models.db import User, get_user_db
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
-    reset_password_token_secret = JWT_SECRET
-    verification_token_secret = JWT_SECRET
+    reset_password_token_secret = app_settings.USER_MANAGER_SECRET
+    verification_token_secret = app_settings.USER_MANAGER_SECRET
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         print(f"User {user.id} has registered.")

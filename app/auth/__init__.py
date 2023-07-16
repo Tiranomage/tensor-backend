@@ -4,14 +4,14 @@ from fastapi import FastAPI
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 
-from app.config import JWT_SECRET
+from app.config import app_settings
 from app.models.db import User
 from app.shemas.user import UserRead, UserCreate, UserUpdate
 from .manager import get_user_manager
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=JWT_SECRET, lifetime_seconds=3600)
+    return JWTStrategy(secret=app_settings.JWT_SECRET, lifetime_seconds=3600)
 
 
 bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
@@ -40,19 +40,19 @@ def include_auth_router(app: FastAPI) -> None:
 
     app.include_router(
         fastapi_users.get_register_router(UserRead, UserCreate),
-        prefix="/auth1",
+        prefix="/auth",
         tags=["auth"],
     )
 
     app.include_router(
         fastapi_users.get_verify_router(UserRead),
-        prefix="/auth2",
+        prefix="/auth",
         tags=["auth"],
     )
 
     app.include_router(
         fastapi_users.get_reset_password_router(),
-        prefix="/auth3",
+        prefix="/auth",
         tags=["auth"],
     )
 

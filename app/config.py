@@ -1,19 +1,62 @@
 import os
-from distutils.util import strtobool
-from dotenv import load_dotenv
-# Файл настроек должен быть скопирован в приложение FastApi из docker-compose проекта
-load_dotenv('../.env')
 
-DATABASE_NAME = os.environ.get('DATABASE_NAME', 'postgres')
-DATABASE_USER = os.environ.get('DATABASE_USER', 'postgres')
-DATABASE_PASS = os.environ.get('DATABASE_PASS', 'postgres')
-DATABASE_PORT = int(os.environ.get('DATABASE_PORT', 5432))
-DATABASE_HOST = os.environ.get('DATABASE_HOST', 'localhost')
-DATABASE_ECHO = strtobool(os.environ.get('DATABASE_ECHO', 'false'))
+from pydantic import BaseSettings, Field
 
-DATABASE_URL = f'postgresql+asyncpg://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}'
 
-BACK_HOST = os.environ.get('BACK_HOST', 'localhost')
-BACK_PORT = int(os.environ.get('BACK_PORT', 8081))
+class Settings(BaseSettings):
+    class Config:
+        # Костыль для поиска переменных при запуске и приложения и тестов
+        env_file = '../.env' if os.path.isfile('../.env') else '.env'
+        env_file_encoding = 'utf-8'
 
-JWT_SECRET = os.environ.get('BACK_JWT_SECRET', 'SECRET')
+        case_sensitive = True
+        allow_mutation = False
+
+
+class AppSettings(Settings):
+    HOST: str = Field(default='localhost')
+    PORT: int = Field(default=8080)
+    JWT_SECRET: str = Field(default='SECRET')
+    USER_MANAGER_SECRET: str = Field(default='SECRET')
+
+    class Config:
+        env_prefix = 'BACK_'
+
+
+class DatabaseSettings(Settings):
+    HOST: str = Field(default='localhost')
+    NAME: str = Field(default='postgres')
+    USER: str = Field(default='postgres')
+    PASS: str = Field(default='postgres')
+    PORT: int = Field(default=5432)
+    ECHO: bool = Field(default=False)
+
+    @property
+    def database_url(self) -> str:
+        return f'postgresql+asyncpg://{self.USER}:{self.PASS}@{self.HOST}:{self.PORT}/{self.NAME}?async_fallback=True'
+
+    class Config:
+        env_prefix = 'DATABASE_'
+
+
+class TestDatabaseSettings(DatabaseSettings):
+    class Config:
+        env_prefix = 'TEST_DB_'
+
+
+class MinioSettings(Settings):
+    ACCESS_KEY: str = Field(default='SECRET')
+    SECRET_KEY: str = Field(default='SECRET')
+    ROOT_USER: str = Field(default='minio')
+    ROOT_PASS: str = Field(default='minio')
+    PORT: int = Field(default=9000)
+    CONSOLE: int = Field(default=9090)
+
+    class Config:
+        env_prefix = 'MINIO_'
+
+
+database_settings = DatabaseSettings()
+test_database_settings = TestDatabaseSettings()
+app_settings = AppSettings()
+minio_settings = MinioSettings()

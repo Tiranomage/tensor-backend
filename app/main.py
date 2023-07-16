@@ -2,10 +2,15 @@ import uvicorn
 from fastapi import FastAPI, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
+from sqlalchemy.orm.strategy_options import selectinload
 
 from app.auth import include_auth_router, current_active_user
-from app.config import BACK_HOST, BACK_PORT
-from app.models.models import User
+from app.config import app_settings
+from app.models.db import get_async_session
+from app.models.models import User, Category, Chat
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 app = FastAPI(
@@ -73,4 +78,4 @@ if __name__ == "__main__":
     # print(hero_2)
     # print(hero_3)
 
-    uvicorn.run("app.main:app", host=BACK_HOST, port=BACK_PORT, reload=True)
+    uvicorn.run("app.main:app", host=app_settings.HOST, port=app_settings.PORT, reload=True)
