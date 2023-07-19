@@ -12,6 +12,9 @@ from app.models.models import User, Category, Chat
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.routers.chat_routers import chat_router, message_router
+from app.routers.category_router import category_router, tag_router
+
 
 app = FastAPI(
     title='API Template'
@@ -28,6 +31,11 @@ app.add_middleware(
 
 # Подключаем роуты из внешних источников
 include_auth_router(app)
+
+app.include_router(chat_router)
+app.include_router(message_router)
+app.include_router(category_router)
+app.include_router(tag_router)
 
 
 # @app.on_event("startup")
