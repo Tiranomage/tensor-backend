@@ -58,9 +58,9 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
-    messages: Mapped[list["Message"]] = relationship("Message", back_populates="user", lazy="selectin")
-    chats: Mapped[List["Chat"]] = relationship(back_populates="users", secondary='user_chats', lazy="selectin")
-    tags: Mapped[List["Tag"]] = relationship(back_populates="users", secondary='user_tags', lazy="selectin")
+    messages: Mapped[list["Message"]] = relationship("Message", back_populates="user", lazy="dynamic")
+    chats: Mapped[List["Chat"]] = relationship(back_populates="users", secondary='user_chats', lazy="dynamic")
+    tags: Mapped[List["Tag"]] = relationship(back_populates="users", secondary='user_tags', lazy="dynamic")
 
     user_chats: Mapped[list["UserChats"]] = relationship("UserChats", back_populates="user", lazy="dynamic")
     user_tags: Mapped[list["UserTags"]] = relationship("UserTags", back_populates="user", lazy="dynamic")
@@ -78,9 +78,9 @@ class Chat(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
-    messages: Mapped[list["Message"]] = relationship("Message", back_populates="chat", lazy="selectin")
-    users: Mapped[List["User"]] = relationship(back_populates="chats", secondary='user_chats', lazy="selectin")
-    tags: Mapped[List["Tag"]] = relationship(back_populates="chats", secondary='chat_tags', lazy="selectin")
+    messages: Mapped[list["Message"]] = relationship("Message", back_populates="chat", lazy="dynamic")
+    users: Mapped[List["User"]] = relationship(back_populates="chats", secondary='user_chats', lazy="dynamic")
+    tags: Mapped[List["Tag"]] = relationship(back_populates="chats", secondary='chat_tags', lazy="dynamic")
 
     user_chats: Mapped[list["UserChats"]] = relationship("UserChats", back_populates="chat", lazy="dynamic")
     chat_tags: Mapped[list["ChatTags"]] = relationship("ChatTags", back_populates="chat", lazy="dynamic")
@@ -129,9 +129,9 @@ class Tag(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
-    category: Mapped["Category"] = relationship("Category", back_populates="tags", lazy="selectin")
-    users: Mapped[List["User"]] = relationship(back_populates="tags", secondary='user_tags', lazy="selectin")
-    chats: Mapped[List["Chat"]] = relationship(back_populates="tags", secondary='chat_tags', lazy="selectin")
+    category: Mapped["Category"] = relationship("Category", back_populates="tags")
+    users: Mapped[List["User"]] = relationship(back_populates="tags", secondary='user_tags', lazy="dynamic")
+    chats: Mapped[List["Chat"]] = relationship(back_populates="tags", secondary='chat_tags', lazy="dynamic")
 
     user_tags: Mapped[list["UserTags"]] = relationship("UserTags", back_populates="tag")
     chat_tags: Mapped[list["ChatTags"]] = relationship("ChatTags", back_populates="tag")
@@ -176,4 +176,4 @@ class Category(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
-    tags: Mapped[list["Tag"]] = relationship("Tag", back_populates="category", lazy="selectin")
+    tags: Mapped[list["Tag"]] = relationship("Tag", back_populates="category")
