@@ -1,18 +1,15 @@
 import uvicorn
+
 from fastapi import FastAPI, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
-from sqlalchemy.orm.strategy_options import selectinload
 
 from app.auth import include_auth_router, current_active_user
 from app.config import app_settings
-from app.models.db import get_async_session
 from app.models.models import User, Category, Chat
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.routers.chat_routers import chat_router, message_router
+from app.routers.websocket_router import ws_router
 from app.routers.category_router import category_router, tag_router
 
 
@@ -36,6 +33,7 @@ app.include_router(chat_router)
 app.include_router(message_router)
 app.include_router(category_router)
 app.include_router(tag_router)
+app.include_router(ws_router)
 
 
 # @app.on_event("startup")
