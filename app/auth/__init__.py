@@ -37,6 +37,11 @@ current_active_user = fastapi_users.current_user(active=True)
 additional_users_router = APIRouter(prefix="/current", tags=["current"])
 
 
+@additional_users_router.get("", response_model=UserRead)
+async def user(user: User = Depends(current_user)):
+    return user
+
+
 @additional_users_router.get("/tags", response_model=list[search_schemas.Tag])
 async def user_tags(
         offset: int = 0,
@@ -124,6 +129,4 @@ def include_auth_router(app: FastAPI) -> None:
 
     app.include_router(
         additional_users_router,
-        prefix="/users",
-        tags=["users"]
     )
