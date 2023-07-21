@@ -6,13 +6,15 @@ import pytest
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.future import select
 from sqlalchemy.pool import NullPool
 
 from app.config import test_database_settings
 from app.main import app
 from app.models.db import get_async_session
-from app.models.models import Base
+from app.models.models import Base, User
 from seeds import seed
 
 metadata = Base.metadata
@@ -43,9 +45,12 @@ def prepare_database():  # session: AsyncSession = Depends(override_get_async_se
 
 
 @pytest.fixture(autouse=True, scope="session")
-async def prepare_database2():  # session: AsyncSession = Depends(override_get_async_session)):
+async def prepare_seed():  # session: AsyncSession = Depends(override_get_async_session)):
     async with async_session_maker() as session:
         await seed(session)
+        await session.execute(delete(User).where(User.email == 'test1@example.ru'))
+        await session.execute(delete(User).where(User.email == '+79876543210'))
+        await session.commit()
 
 
 @pytest.fixture(scope='session')
