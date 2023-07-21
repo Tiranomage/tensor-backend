@@ -231,3 +231,9 @@ async def delete_message(
     message_obj = await crud_message.get(session, model_id=message_id)
     deleted_message_obj = await crud_message.delete(session, model_id=message_obj.id)
     return deleted_message_obj
+
+
+
+
+
+

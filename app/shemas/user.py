@@ -49,3 +49,4 @@ class UserUpdate(schemas.BaseUserUpdate):
 
 class EmailOrPhone(BaseModel):
     email: Union[EmailStr, PhoneNumber]
+
