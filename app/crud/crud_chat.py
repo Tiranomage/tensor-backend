@@ -4,7 +4,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .crud_base import CRUDBase
+from app.crud.crud_base import CRUDBase
 from app.models.models import Message, UserChats, Chat
 from app.shemas.chat import (
     MessageCreate,
@@ -17,7 +17,7 @@ from app.shemas.chat import (
 
 
 class CRUDMessage(CRUDBase[Message, MessageCreate, MessageUpdate]):
-    async def create(
+    async def create_user(
             self,
             db: AsyncSession,
             *,
