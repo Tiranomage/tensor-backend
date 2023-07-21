@@ -34,7 +34,7 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
 current_user = fastapi_users.current_user()
 current_active_user = fastapi_users.current_user(active=True)
 
-additional_users_router = APIRouter(prefix="/users", tags=["users"])
+additional_users_router = APIRouter(prefix="/current", tags=["current"])
 
 
 @additional_users_router.get("/tags", response_model=list[search_schemas.Tag])
