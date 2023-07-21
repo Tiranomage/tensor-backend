@@ -1,13 +1,15 @@
 import uuid
+from typing import Optional
 
-from fastapi import FastAPI, APIRouter, Depends
+from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import app_settings
 from app.models.db import User, get_async_session
-from app.shemas.user import UserRead, UserCreate, UserUpdate
+from app.shemas.user import UserRead, UserCreate, EmailOrPhone
 from .manager import get_user_manager
 from ..crud.crud_category import crud_tag, crud_user_tags
 from ..shemas import category as search_schemas
@@ -32,7 +34,6 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
 current_user = fastapi_users.current_user()
 current_active_user = fastapi_users.current_user(active=True)
 
-
 additional_users_router = APIRouter(prefix="/users", tags=["users"])
 
 
@@ -43,7 +44,7 @@ async def user_tags(
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    tags_obj = user.tags[offset:offset+limit]
+    tags_obj = user.tags[offset:offset + limit]
     return tags_obj
 
 
@@ -62,6 +63,25 @@ async def create_user_tags(
         tags_obj.append(tag_obj)
 
     return tags_obj
+
+
+auth_router = APIRouter()
+
+
+@auth_router.post("/find", response_model=UserRead, response_model_include={"email", "id"}, )
+async def auth_find(
+        email: EmailOrPhone,
+        session: AsyncSession = Depends(get_async_session)
+):
+    statement = select(User).where(
+        func.lower(User.email) == func.lower(email.email)
+    )
+    results = await session.execute(statement)
+    user = results.unique().scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(status_code=404, detail="USER_NOT_EXISTS")
+    return user
 
 
 def include_auth_router(app: FastAPI) -> None:
@@ -92,10 +112,16 @@ def include_auth_router(app: FastAPI) -> None:
         tags=["auth"],
     )
 
+    # app.include_router(
+    #     fastapi_users.get_users_router(UserRead, UserUpdate),
+    #     prefix="/users",
+    #     tags=["users"],
+    # )
+
     app.include_router(
-        fastapi_users.get_users_router(UserRead, UserUpdate),
-        prefix="/users",
-        tags=["users"],
+        auth_router,
+        prefix="/auth",
+        tags=["auth"]
     )
 
     app.include_router(

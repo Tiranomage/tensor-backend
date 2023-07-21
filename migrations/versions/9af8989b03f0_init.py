@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 29fdca23bd45
+Revision ID: 9af8989b03f0
 Revises: 
-Create Date: 2023-07-16 19:20:15.432298
+Create Date: 2023-07-21 10:46:28.705860
 
 """
 import fastapi_users_db_sqlalchemy
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '29fdca23bd45'
+revision = '9af8989b03f0'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -41,7 +41,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('users',
-    sa.Column('username', sa.String(length=320), nullable=False),
     sa.Column('external', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
@@ -55,7 +54,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
-    op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
     op.create_table('messages',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('parent_id', sa.UUID(), nullable=True),
@@ -122,7 +120,6 @@ def downgrade() -> None:
     op.drop_table('user_chats')
     op.drop_table('tags')
     op.drop_table('messages')
-    op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     op.drop_table('chats')

@@ -44,7 +44,7 @@ class Base(DeclarativeBase):
 
 class User(Base, SQLAlchemyBaseUserTableUUID):
     __tablename__ = 'users'
-    username: Mapped[str] = mapped_column(String(length=320), unique=True, index=True, nullable=False)
+    # username: Mapped[str] = mapped_column(String(length=320), unique=True, index=True, nullable=False)
     external: Mapped[dict] = mapped_column(JSONB, default=lambda: {})
     # full_name: Mapped[str] = mapped_column(String(length=320))
     # birth_date: Mapped[date] = mapped_column(Date)
