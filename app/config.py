@@ -17,7 +17,11 @@ class AppSettings(Settings):
     HOST: str = Field(default='localhost')
     PORT: int = Field(default=8080)
     JWT_SECRET: str = Field(default='SECRET')
+    JWT_LIFETIME: int = Field(default=86400)
     USER_MANAGER_SECRET: str = Field(default='SECRET')
+    STATIC: str = Field(default='../static')
+    STATIC_LINK: str = Field(default='static')
+    MAX_FILE_SIZE: int = Field(default=1024 * 1024 * 50)  # = 50MB
 
     class Config:
         env_prefix = 'BACK_'

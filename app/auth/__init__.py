@@ -16,7 +16,7 @@ from app.shemas import category as search_schemas
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=app_settings.JWT_SECRET, lifetime_seconds=3600)
+    return JWTStrategy(secret=app_settings.JWT_SECRET, lifetime_seconds=app_settings.JWT_LIFETIME)
 
 
 bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
