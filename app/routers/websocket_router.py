@@ -9,10 +9,13 @@
     "external": dict|None
 }
 """
+import json
+
 import jwt
 import uuid
 
 from fastapi import APIRouter
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 from fastapi.websockets import WebSocket
 from fastapi.websockets import WebSocketDisconnect
@@ -21,54 +24,54 @@ from sqlalchemy import select
 from app.config import app_settings
 from app.models.db import async_session_maker as async_session
 from app.models.models import UserChats
+from app.crud.crud_chat import crud_message
+from app.shemas.chat import MessageCreate
 
-# html = """
-# <!DOCTYPE html>
-# <html>
-#     <head>
-#         <title>Chat</title>
-#     </head>
-#     <body>
-#         <h1>WebSocket Chat</h1>
-#         <form action="" onsubmit="sendMessage(event)">
-#             <label>Chat ID: <input type="text" id="chatId" autocomplete="off" value="3e039cb0-2e43-466d-8699-a2d61d85a765"/></label>
-#             <button onclick="connect(event)">Connect</button>
-#             <hr>
-#             <label>Message: <input type="text" id="messageText" autocomplete="off"/></label>
-#             <button>Send</button>
-#         </form>
-#         <ul id='messages'>
-#         </ul>
-#         <script>
-#
-#         var ws = null;
-#             function connect(event) {
-#                 var token = localStorage.getItem("token")
-#                 ws = new WebSocket("ws://localhost:8080/websocket/?token=" + token);
-#                 ws.onmessage = function(event) {
-#                     var messages = document.getElementById('messages')
-#                     var message = document.createElement('li')
-#                     var content = document.createTextNode(event.data)
-#                     message.appendChild(content)
-#                     messages.appendChild(message)
-#                 };
-#                 event.preventDefault()
-#             }
-#             function sendMessage(event) {
-#                 var input = localStorage.getItem("message")
-#                 ws.send(input)
-#                 event.preventDefault()
-#             }
-#         </script>
-#     </body>
-# </html>
-# """
+html = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <h1>WebSocket Chat</h1>
+        <form action="" onsubmit="sendMessage(event)">
+            <label>Chat ID: <input type="text" id="chatId" autocomplete="off" value="3e039cb0-2e43-466d-8699-a2d61d85a765"/></label>
+            <button onclick="connect(event)">Connect</button>
+            <hr>
+            <label>Message: <input type="text" id="messageText" autocomplete="off"/></label>
+            <button>Send</button>
+        </form>
+        <ul id='messages'>
+        </ul>
+        <script>
+
+        var ws = null;
+            function connect(event) {
+                var token = localStorage.getItem("token")
+                ws = new WebSocket("ws://localhost:8080/websocket/?token=" + token);
+                ws.onmessage = function(event) {
+                    var messages = document.getElementById('messages')
+                    var message = document.createElement('li')
+                    var content = document.createTextNode(event.data)
+                    message.appendChild(content)
+                    messages.appendChild(message)
+                };
+                event.preventDefault()
+            }
+            function sendMessage(event) {
+                var input = localStorage.getItem("message")
+                ws.send(input)
+                event.preventDefault()
+            }
+        </script>
+    </body>
+</html>
+"""
 
 ws_router = APIRouter(prefix="/websocket", tags=["websocket"])
 
 
-
-# TODO подумать как сделать echo метод и какой обработчик будет его тянуть, чтобы избавляться от лишних соединений.
 class ConnectionManager:
     def __init__(self):
         # вид хранения {user_id:[websockets]}
@@ -90,27 +93,10 @@ class ConnectionManager:
                     self.active_connections[user_id].remove(websocket)
                 break
 
-    async def broadcast(self, text: str, from_user_id: uuid.UUID, chat_id: uuid.UUID, external: dict | None,
-                        db_users: list):
-        # формируем json
-        message = {
-            "text": text,
-            "user_id": from_user_id,
-            "chat_id": chat_id,
-            "external": external
-        }
-
-        # приводим к одинаковому виду
-        # т.к. db_users возвращает list[UUID('dda273...')], а active_connections.keys list['dda273...']
-        # иначе intersection возвращает пустой массив
-        db_users_set = set(map(lambda x: str(x), db_users))
-
-        # получаем set пересечений
-        active_users_in_chat = db_users_set.intersection(set(self.active_connections.keys()))
-
-        for user_id in list(active_users_in_chat):
+    async def broadcast(self, message, active_users_in_chat: list[uuid.UUID]):
+        for user_id in active_users_in_chat:
             # отправителю сообщение по сокету не шлём
-            if from_user_id != user_id:
+            if uuid.UUID(message['user_id']) != user_id:
                 user_sockets_list = self.active_connections[user_id]
                 for user_socket in user_sockets_list:
                     await user_socket.send_json(message)
@@ -119,10 +105,9 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-
-# @ws_router.get("/")
-# async def get():
-#     return HTMLResponse(html)
+@ws_router.get("/")
+async def get():
+    return HTMLResponse(html)
 
 
 @ws_router.websocket("/")
@@ -134,13 +119,12 @@ async def websocket_endpoint(
     data: MessageCreate
 
     """
-    # user = {"email": "user@example.com", "password": "string"}
 
     data_decoded = jwt.decode(jwt=token, key=app_settings.JWT_SECRET, audience=["fastapi-users:auth"],
                               algorithms=['HS256'])
 
     expire_on = data_decoded['exp']
-    user_id = data_decoded['sub']
+    user_id = uuid.UUID(data_decoded['sub'])
 
     await manager.connect(websocket, user_id)
     try:
@@ -154,28 +138,31 @@ async def websocket_endpoint(
                         select(UserChats.user_id)
                         .where(UserChats.chat_id == data['chat_id'])
                     )
-                    db_users = list(db_users_id)
+                    db_users_set = set(db_users_id)
 
-                    # TODO сохраняем сообщение
 
+                    # формируем сообщение, попутно проверяя соответствие полей
+                    message = {
+                            "chat_id": data['chat_id'],
+                            "type": data['type'],
+                            "external": data['external']
+                        }
+
+
+                    message_schema = MessageCreate(**message)
+
+
+                    # сохраняем сообщение
+                    message_db_object = await crud_message.create_user(db=session, user_id=user_id, obj_in=message_schema)
+                    message_to_send = jsonable_encoder(message_db_object)
+
+                    # получаем список пересечений пользователей из бд по чату и активными сокетами
+                    active_users_in_chat = list(db_users_set.intersection(set(manager.active_connections.keys())))
 
                     # оформляем рассылку
-                    if 'external' in data.keys():
-                        await manager.broadcast(
-                            text=data['text'],
-                            chat_id=data['chat_id'],
-                            from_user_id=user_id,
-                            db_users=db_users,
-                            external=data['external']
-                        )
-                    else:
-                        await manager.broadcast(
-                            text=data['text'],
-                            chat_id=data['chat_id'],
-                            from_user_id=user_id,
-                            db_users=db_users,
-                            external=None
-                        )
+                    await manager.broadcast(message=message_to_send,
+                                            active_users_in_chat=active_users_in_chat)
+
 
             except Exception as e:
                 print(e, 'ERROR something wrong with data or broadcast')
