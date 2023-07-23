@@ -40,6 +40,7 @@ class Tag(TagDB):
 class UserTagsBase(BaseModel):
     user_id: uuid.UUID
     tag_id: uuid.UUID
+    title: str
 
 
 class UserTagsCreate(UserTagsBase):
@@ -54,6 +55,7 @@ class UserTagsDB(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     tag_id: uuid.UUID
+    title: str
 
     class Config:
         orm_mode = True

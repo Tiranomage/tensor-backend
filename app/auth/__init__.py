@@ -8,7 +8,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import app_settings
+from app.helpers.tags import helper_update_user_tags
 from app.models.db import User, get_async_session
+from app.models.models import UserTags
 from app.shemas.user import UserRead, UserCreate, EmailOrPhone, UserUpdate
 from app.auth.manager import get_user_manager
 from app.crud.crud_user import crud_user
@@ -39,42 +41,37 @@ additional_users_router = APIRouter(prefix="/current", tags=["current"])
 
 
 @additional_users_router.get("", response_model=UserRead)
-async def user(user: User = Depends(current_user)):
+async def get_user(user: User = Depends(current_user)):
     return user
 
 
 @additional_users_router.post("", response_model=UserRead)
-async def user(
+async def post_user(
         user_update: UserUpdate, user: User = Depends(current_user), session: AsyncSession = Depends(get_async_session)
 ):
     updated_user = await crud_user.update(session, db_obj=user, obj_in=user_update)
     return updated_user
 
 
-@additional_users_router.get("/tags", response_model=list[search_schemas.Tag])
+@additional_users_router.get("/tags", response_model=list[search_schemas.UserTags])
 async def user_tags(
         offset: int = 0,
         limit: int = 100,
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    tags_obj = (await session.scalars(user.tags.statement.offset(offset).limit(limit))).all()
+    tags_obj = (await session.scalars(
+        select(UserTags).where(UserTags.user_id == user.id).offset(offset).limit(limit))).all()
     return tags_obj
 
 
-@additional_users_router.post("/tags", response_model=list[search_schemas.Tag])
+@additional_users_router.post("/tags", response_model=list[search_schemas.UserTags])
 async def update_user_tags(
-        tags: list[search_schemas.TagCreate],
+        tags: list[str],  # list[search_schemas.TagCreate],
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    tags_obj = await crud_tag.exist_create(session, tags=tags)
-
-    for tag in tags_obj:
-        user_tags_create = search_schemas.UserTagsCreate(user_id=user.id, tag_id=tag.id)
-        await crud_user_tags.create(session, obj_in=user_tags_create)
-
-    return tags_obj
+    return await helper_update_user_tags(tags, user, session)
 
 
 auth_router = APIRouter()
