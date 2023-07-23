@@ -59,3 +59,6 @@ tomli==2.0.1
 typing-extensions==4.6.3
 urllib3==2.0.3
 uvicorn==0.22.0
+
+pymorphy2~=0.9.1
+nltk~=3.8.1
