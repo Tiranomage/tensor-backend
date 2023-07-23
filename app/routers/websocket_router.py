@@ -67,21 +67,31 @@ from app.models.models import UserChats
 ws_router = APIRouter(prefix="/websocket", tags=["websocket"])
 
 
+
+# TODO подумать как сделать echo метод и какой обработчик будет его тянуть, чтобы избавляться от лишних соединений.
 class ConnectionManager:
     def __init__(self):
-        # вид хранения {user_id:websocket}
-        self.active_connections: dict[uuid.UUID:WebSocket] = {}
+        # вид хранения {user_id:[websockets]}
+        self.active_connections: dict[uuid.UUID:[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, user_id: uuid.UUID):
         await websocket.accept()
-        self.active_connections.update({user_id: websocket})
+        if user_id in self.active_connections.keys():
+            self.active_connections[user_id].append(websocket)
+        else:
+            self.active_connections.update({user_id: [websocket]})
 
     def disconnect(self, websocket: WebSocket):
-        for user_id, user_socket in self.active_connections.items():
-            if websocket in user_socket:
-                del self.active_connections[user_id]
+        for user_id, user_sockets in self.active_connections.items():
+            if websocket in user_sockets:
+                if len(user_sockets) <= 1:
+                    del self.active_connections[user_id]
+                else:
+                    self.active_connections[user_id].remove(websocket)
+                break
 
-    async def broadcast(self, text: str, from_user_id: uuid.UUID, chat_id: uuid.UUID, external:dict|None, db_users: list):
+    async def broadcast(self, text: str, from_user_id: uuid.UUID, chat_id: uuid.UUID, external: dict | None,
+                        db_users: list):
         # формируем json
         message = {
             "text": text,
@@ -101,9 +111,10 @@ class ConnectionManager:
         for user_id in list(active_users_in_chat):
             # отправителю сообщение по сокету не шлём
             if from_user_id != user_id:
-                user_socket = self.active_connections[user_id]
-                await user_socket.send_json(message)
-                #print(f"message: {message} was delivered to {user_id}")
+                user_sockets_list = self.active_connections[user_id]
+                for user_socket in user_sockets_list:
+                    await user_socket.send_json(message)
+                    print(f"message: {message} was delivered to {user_id} by {user_socket}")
 
 
 manager = ConnectionManager()
@@ -144,6 +155,9 @@ async def websocket_endpoint(
                         .where(UserChats.chat_id == data['chat_id'])
                     )
                     db_users = list(db_users_id)
+
+                    # TODO сохраняем сообщение
+
 
                     # оформляем рассылку
                     if 'external' in data.keys():
