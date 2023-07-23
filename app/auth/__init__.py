@@ -9,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import app_settings
 from app.models.db import User, get_async_session
-from app.shemas.user import UserRead, UserCreate, EmailOrPhone
+from app.shemas.user import UserRead, UserCreate, EmailOrPhone, UserUpdate
 from app.auth.manager import get_user_manager
+from app.crud.crud_user import crud_user
 from app.crud.crud_category import crud_tag, crud_user_tags
 from app.shemas import category as search_schemas
 
@@ -40,6 +41,14 @@ additional_users_router = APIRouter(prefix="/current", tags=["current"])
 @additional_users_router.get("", response_model=UserRead)
 async def user(user: User = Depends(current_user)):
     return user
+
+
+@additional_users_router.post("", response_model=UserRead)
+async def user(
+        user_update: UserUpdate, user: User = Depends(current_user), session: AsyncSession = Depends(get_async_session)
+):
+    updated_user = await crud_user.update(session, db_obj=user, obj_in=user_update)
+    return updated_user
 
 
 @additional_users_router.get("/tags", response_model=list[search_schemas.Tag])
