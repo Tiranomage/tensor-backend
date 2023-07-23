@@ -23,6 +23,8 @@ class AppSettings(Settings):
     STATIC_LINK: str = Field(default='static')
     MAX_FILE_SIZE: int = Field(default=1024 * 1024 * 50)  # = 50MB
 
+    USER_CATEGORY: str = '154c82bf-1883-4fd8-b9db-83df7f3d0529'
+
     class Config:
         env_prefix = 'BACK_'
 

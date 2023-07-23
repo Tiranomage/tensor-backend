@@ -144,7 +144,7 @@ async def add_chat_users(
 async def delete_chat(
         chat_id: uuid.UUID, user: User = Depends(current_user), session: AsyncSession = Depends(get_async_session)
 ):
-    deleted_chat_obj = crud_chat.delete(session, model_id=chat_id)
+    deleted_chat_obj = await crud_chat.delete(session, model_id=chat_id)
     return deleted_chat_obj
 
 
@@ -156,8 +156,8 @@ async def delete_chat_users(
         session: AsyncSession = Depends(get_async_session)
 ):
     for user_id in users_id:
-        user_chats_obj = crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user_id)
-        deleted_user_chats_obj = crud_user_chats.delete(session, model_id=user_chats_obj.id)
+        user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user_id)
+        deleted_user_chats_obj = await crud_user_chats.delete(session, model_id=user_chats_obj.id)
 
 
 #####################
@@ -206,14 +206,14 @@ async def delete_chat_users(
 #     return message_obj.chat
 #
 #
-# @message_router.post("", response_model=chat_schemas.Message)
-# async def create_message(
-#         message: chat_schemas.MessageCreate,
-#         user: User = Depends(current_user),
-#         session: AsyncSession = Depends(get_async_session)
-# ):
-#     message_obj = await crud_message.create_user(session, user_id=user.id, obj_in=message)
-#     return message_obj
+@message_router.post("", response_model=chat_schemas.Message)
+async def create_message(
+        message: chat_schemas.MessageCreate,
+        user: User = Depends(current_user),
+        session: AsyncSession = Depends(get_async_session)
+):
+    message_obj = await crud_message.create_user(session, user_id=user.id, obj_in=message)
+    return message_obj
 #
 #
 # @message_router.put("", response_model=chat_schemas.Message)

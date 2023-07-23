@@ -8,6 +8,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import String, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -62,8 +63,8 @@ class User(Base, SQLAlchemyBaseUserTableUUID):
     chats: Mapped[List["Chat"]] = relationship(back_populates="users", secondary='user_chats', lazy="dynamic")
     tags: Mapped[List["Tag"]] = relationship(back_populates="users", secondary='user_tags', lazy="dynamic")
 
-    user_chats: Mapped[list["UserChats"]] = relationship("UserChats", back_populates="user", lazy="dynamic")
-    user_tags: Mapped[list["UserTags"]] = relationship("UserTags", back_populates="user", lazy="dynamic")
+    # user_chats: Mapped[list["UserChats"]] = relationship("UserChats", back_populates="user", lazy="dynamic")
+    # user_tags: Mapped[list["UserTags"]] = relationship("UserTags", back_populates="user", lazy="dynamic")
 
 
 class Chat(Base):
@@ -82,8 +83,8 @@ class Chat(Base):
     users: Mapped[List["User"]] = relationship(back_populates="chats", secondary='user_chats', lazy="dynamic")
     tags: Mapped[List["Tag"]] = relationship(back_populates="chats", secondary='chat_tags', lazy="dynamic")
 
-    user_chats: Mapped[list["UserChats"]] = relationship("UserChats", back_populates="chat", lazy="dynamic")
-    chat_tags: Mapped[list["ChatTags"]] = relationship("ChatTags", back_populates="chat", lazy="dynamic")
+    # user_chats: Mapped[list["UserChats"]] = relationship("UserChats", back_populates="chat", lazy="dynamic")
+    # chat_tags: Mapped[list["ChatTags"]] = relationship("ChatTags", back_populates="chat", lazy="dynamic")
 
 
 class UserChats(Base):
@@ -97,8 +98,8 @@ class UserChats(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
-    user: Mapped["User"] = relationship("User", back_populates="user_chats")
-    chat: Mapped["Chat"] = relationship("Chat", back_populates="user_chats")
+    # user: Mapped["User"] = relationship("User", back_populates="user_chats")
+    # chat: Mapped["Chat"] = relationship("Chat", back_populates="user_chats")
 
 
 class Message(Base):
@@ -133,8 +134,8 @@ class Tag(Base):
     users: Mapped[List["User"]] = relationship(back_populates="tags", secondary='user_tags', lazy="dynamic")
     chats: Mapped[List["Chat"]] = relationship(back_populates="tags", secondary='chat_tags', lazy="dynamic")
 
-    user_tags: Mapped[list["UserTags"]] = relationship("UserTags", back_populates="tag")
-    chat_tags: Mapped[list["ChatTags"]] = relationship("ChatTags", back_populates="tag")
+    # user_tags: Mapped[list["UserTags"]] = relationship("UserTags", back_populates="tag")
+    # chat_tags: Mapped[list["ChatTags"]] = relationship("ChatTags", back_populates="tag")
 
 
 class UserTags(Base):
@@ -143,12 +144,13 @@ class UserTags(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
     tag_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("tags.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(320), nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
-    user: Mapped["User"] = relationship("User", back_populates="user_tags")
-    tag: Mapped["Tag"] = relationship("Tag", back_populates="user_tags")
+    # user: Mapped["User"] = relationship("User", back_populates="user_tags")
+    # tag: Mapped["Tag"] = relationship("Tag", back_populates="user_tags")
 
 
 class ChatTags(Base):
@@ -157,12 +159,13 @@ class ChatTags(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     chat_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("chats.id"), nullable=False)
     tag_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("tags.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(320), nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
-    chat: Mapped["Chat"] = relationship("Chat", back_populates="chat_tags")
-    tag: Mapped["Tag"] = relationship("Tag", back_populates="chat_tags")
+    # chat: Mapped["Chat"] = relationship("Chat", back_populates="chat_tags")
+    # tag: Mapped["Tag"] = relationship("Tag", back_populates="chat_tags")
 
 
 class Category(Base):

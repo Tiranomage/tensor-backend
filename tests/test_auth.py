@@ -1,13 +1,13 @@
 import json
 import pytest
-from conftest import client
+from conftest import client, LOGIN_EMAIL, LOGIN_PHONE
 
 
 class TestAuth:
 
-    emails_reg = ['test1@example.ru', '+79876543210']
-    emails_login = ['test1@example.ru', '+79876543210', '9876543210']
-    emails_fail = ['test1example.ru', 'test1@exampleru', '+79876543210', '+9876543210', '98765432100']
+    emails_reg = [LOGIN_EMAIL, LOGIN_PHONE]
+    emails_login = [LOGIN_EMAIL, LOGIN_PHONE, '9876543210']
+    emails_fail = ['test1example.ru', 'test1@exampleru', LOGIN_PHONE, '+9876543210', '98765432100']
 
     @classmethod
     async def setup_class(cls):
@@ -81,8 +81,8 @@ class TestAuth:
     # @pytest.mark.skip
     def test_login_fail_pass(self):
         response = client.post('auth/jwt/login', data={
-            'username': 'test1@example.ru',
-            'password': 'test1@example.ru',
+            'username': LOGIN_EMAIL,
+            'password': LOGIN_EMAIL,
         }, headers={'content-type': 'application/x-www-form-urlencoded'})
         assert response.status_code == 400
         assert response.text == '{"detail":"LOGIN_BAD_CREDENTIALS"}'
