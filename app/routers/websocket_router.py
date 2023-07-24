@@ -156,6 +156,9 @@ async def websocket_endpoint(
                     message_db_object = await crud_message.create_user(db=session, user_id=user_id, obj_in=message_schema)
                     message_to_send = jsonable_encoder(message_db_object)
 
+                    # в external обновляем id последнего сообщения
+                    message_to_send["external"]["lastMessage"] = message_to_send['id']
+
                     # получаем список пересечений пользователей из бд по чату и активными сокетами
                     active_users_in_chat = list(db_users_set.intersection(set(manager.active_connections.keys())))
 
