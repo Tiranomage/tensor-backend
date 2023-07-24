@@ -14,7 +14,7 @@ from sqlalchemy.pool import NullPool
 from app.config import test_database_settings
 from app.main import app
 from app.models.db import get_async_session
-from app.models.models import Base, User
+from app.models.models import Base, User, UserTags
 from seeds import seed
 
 metadata = Base.metadata
@@ -31,6 +31,8 @@ async def override_get_async_session() -> AsyncGenerator[AsyncSession, None]:
 
 app.dependency_overrides[get_async_session] = override_get_async_session
 client = TestClient(app)
+LOGIN_EMAIL = 'test1@example.ru'
+LOGIN_PHONE = '+79876543210'
 
 
 # Apply migrations at beginning and end of testing session
@@ -48,8 +50,11 @@ def prepare_database():  # session: AsyncSession = Depends(override_get_async_se
 async def prepare_seed():  # session: AsyncSession = Depends(override_get_async_session)):
     async with async_session_maker() as session:
         await seed(session)
-        await session.execute(delete(User).where(User.email == 'test1@example.ru'))
-        await session.execute(delete(User).where(User.email == '+79876543210'))
+        for login in [LOGIN_EMAIL, LOGIN_PHONE]:
+            user = (await session.execute(select(User).where(User.email == login))).scalar()
+            await session.execute(delete(UserTags).where(UserTags.user_id == user.id))
+            await session.delete(user)
+        # await session.execute(delete(User).where(User.email == '+79876543210'))
         await session.commit()
 
 
