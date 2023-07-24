@@ -49,7 +49,7 @@ async def chat_children(
 
 
 @chat_router.get("/recommended", response_model=list[chat_schemas.Chat])
-async def recommended_events(
+async def recommended_chats(
         offset: int = 0,
         limit: int = 100,
         user: User = Depends(current_user),
