@@ -34,6 +34,16 @@ async def user_chats(
     return chats_obj
 
 
+@chat_router.get("/recommended", response_model=list[chat_schemas.Chat])
+async def recommended_events(
+        offset: int = 0,
+        limit: int = 100,
+        user: User = Depends(current_user),
+        session: AsyncSession = Depends(get_async_session)
+):
+    pass
+
+
 @chat_router.get("/{chat_id}", response_model=chat_schemas.Chat)
 async def chat(
         chat_id: uuid.UUID,
