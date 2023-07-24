@@ -35,17 +35,36 @@ async def user_chats(
     return chats_obj
 
 
-@chat_router.get("/{chat_id}/children", response_model=list[chat_schemas.Chat])
-async def chat_children(
+# @chat_router.get("/{chat_id}/inner", response_model=list[chat_schemas.Chat])
+# async def chat_inner(
+#         chat_id: uuid.UUID,
+#         offset: int = 0,
+#         limit: int = 100,
+#         user: User = Depends(current_user),
+#         session: AsyncSession = Depends(get_async_session)
+# ):
+#     chat_inner = (await session.scalars(
+#         select(Chat).where(Chat.parent_id == chat_id or Chat.id == chat_id).offset(offset).limit(limit))).all()
+#
+#     if len(chat_inner) <= 1:  # {"chats": ..., "messages": ...}
+#         return {"chats": None, "messages": (await session.scalars(
+#                 chat_inner[0].messages.statement.offset(offset).limit(limit))).all()}
+#     else:
+#         return {"chats": chat_inner, "messages": None}
+
+
+@chat_router.get("/{chat_id}/inner", response_model=list[chat_schemas.Chat])
+async def chat_inner(
         chat_id: uuid.UUID,
         offset: int = 0,
         limit: int = 100,
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    chat_children = (await session.scalars(
-        select(Chat).where(Chat.parent_id == chat_id).offset(offset).limit(limit))).all()
-    return chat_children
+    chat_inner = (await session.scalars(
+        select(Chat).where(Chat.parent_id == chat_id or Chat.id == chat_id).offset(offset).limit(limit))).all()
+
+    return chat_inner
 
 
 @chat_router.get("/recommended", response_model=list[chat_schemas.Chat])
