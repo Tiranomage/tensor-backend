@@ -74,6 +74,24 @@ async def update_user_tags(
     return await helper_update_user_tags(tags, user, session)
 
 
+@additional_users_router.get("/{id}", response_model=UserRead)
+async def get_user_by_id(
+        id: uuid.UUID, user: User = Depends(current_user), session: AsyncSession = Depends(get_async_session)
+):
+    user = (await session.scalars(select(User).filter(User.id == id))).all()
+    return user
+
+
+@additional_users_router.delete("/{id}", response_model=UserRead)
+async def remove_user_by_id(
+        id: uuid.UUID, user: User = Depends(current_user), session: AsyncSession = Depends(get_async_session)
+):
+    user = (await session.scalars(select(User).filter(User.id == id))).all()
+    await session.delete(user)
+    await session.commit()
+    return user
+
+
 auth_router = APIRouter()
 
 

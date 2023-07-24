@@ -59,7 +59,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
-            update_data = obj_in.dict(exclude_unset=True)
+            update_data = obj_in.dict(exclude_unset=True, exclude_none=True)
 
         update_data["updated_at"] = datetime.utcnow()
 

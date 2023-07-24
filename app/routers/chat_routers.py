@@ -1,12 +1,13 @@
 import uuid
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db import get_async_session
 
 from app.crud.crud_chat import crud_chat, crud_message, crud_user_chats
-from app.models.models import User
+from app.models.models import User, Chat
 from app.auth import current_user
 
 from app.shemas import user as user_schemas
@@ -32,6 +33,48 @@ async def user_chats(
 ):
     chats_obj = (await session.scalars(user.chats.statement.offset(offset).limit(limit))).all()
     return chats_obj
+
+
+# @chat_router.get("/{chat_id}/inner", response_model=list[chat_schemas.Chat])
+# async def chat_inner(
+#         chat_id: uuid.UUID,
+#         offset: int = 0,
+#         limit: int = 100,
+#         user: User = Depends(current_user),
+#         session: AsyncSession = Depends(get_async_session)
+# ):
+#     chat_inner = (await session.scalars(
+#         select(Chat).where(Chat.parent_id == chat_id or Chat.id == chat_id).offset(offset).limit(limit))).all()
+#
+#     if len(chat_inner) <= 1:  # {"chats": ..., "messages": ...}
+#         return {"chats": None, "messages": (await session.scalars(
+#                 chat_inner[0].messages.statement.offset(offset).limit(limit))).all()}
+#     else:
+#         return {"chats": chat_inner, "messages": None}
+
+
+@chat_router.get("/{chat_id}/inner", response_model=list[chat_schemas.Chat])
+async def chat_inner(
+        chat_id: uuid.UUID,
+        offset: int = 0,
+        limit: int = 100,
+        user: User = Depends(current_user),
+        session: AsyncSession = Depends(get_async_session)
+):
+    chat_inner = (await session.scalars(
+        select(Chat).where(Chat.parent_id == chat_id or Chat.id == chat_id).offset(offset).limit(limit))).all()
+
+    return chat_inner
+
+
+@chat_router.get("/recommended", response_model=list[chat_schemas.Chat])
+async def recommended_chats(
+        offset: int = 0,
+        limit: int = 100,
+        user: User = Depends(current_user),
+        session: AsyncSession = Depends(get_async_session)
+):
+    pass
 
 
 @chat_router.get("/{chat_id}", response_model=chat_schemas.Chat)
