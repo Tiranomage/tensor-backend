@@ -8,15 +8,18 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import app_settings
+from app.helpers.tags import helper_update_user_tags
 from app.models.db import User, get_async_session
-from app.shemas.user import UserRead, UserCreate, EmailOrPhone
-from .manager import get_user_manager
-from ..crud.crud_category import crud_tag, crud_user_tags
-from ..shemas import category as search_schemas
+from app.models.models import UserTags
+from app.shemas.user import UserRead, UserCreate, EmailOrPhone, UserUpdate
+from app.auth.manager import get_user_manager
+from app.crud.crud_user import crud_user
+from app.crud.crud_category import crud_tag, crud_user_tags
+from app.shemas import category as search_schemas
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=app_settings.JWT_SECRET, lifetime_seconds=3600)
+    return JWTStrategy(secret=app_settings.JWT_SECRET, lifetime_seconds=app_settings.JWT_LIFETIME)
 
 
 bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
@@ -34,35 +37,41 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
 current_user = fastapi_users.current_user()
 current_active_user = fastapi_users.current_user(active=True)
 
-additional_users_router = APIRouter(prefix="/users", tags=["users"])
+additional_users_router = APIRouter(prefix="/current", tags=["current"])
 
 
-@additional_users_router.get("/tags")
+@additional_users_router.get("", response_model=UserRead)
+async def get_user(user: User = Depends(current_user)):
+    return user
+
+
+@additional_users_router.post("", response_model=UserRead)
+async def post_user(
+        user_update: UserUpdate, user: User = Depends(current_user), session: AsyncSession = Depends(get_async_session)
+):
+    updated_user = await crud_user.update(session, db_obj=user, obj_in=user_update)
+    return updated_user
+
+
+@additional_users_router.get("/tags", response_model=list[search_schemas.UserTags])
 async def user_tags(
         offset: int = 0,
         limit: int = 100,
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    tags_obj = user.tags[offset:offset + limit]
+    tags_obj = (await session.scalars(
+        select(UserTags).where(UserTags.user_id == user.id).offset(offset).limit(limit))).all()
     return tags_obj
 
 
-@additional_users_router.put("/tags", response_model=list[search_schemas.Tag])
-async def create_user_tags(
-        tags_id: list[uuid.UUID],
+@additional_users_router.post("/tags", response_model=list[search_schemas.UserTags])
+async def update_user_tags(
+        tags: list[str],  # list[search_schemas.TagCreate],
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    tags_obj = []
-
-    for tag_id in tags_id:
-        tag_obj = await crud_tag.get(session, model_id=tag_id)
-        user_tags_create = search_schemas.UserTagsCreate(user_id=user.id, tag_id=tag_obj.id)
-        await crud_user_tags.create(session, obj_in=user_tags_create)
-        tags_obj.append(tag_obj)
-
-    return tags_obj
+    return await helper_update_user_tags(tags, user, session)
 
 
 auth_router = APIRouter()
@@ -126,6 +135,4 @@ def include_auth_router(app: FastAPI) -> None:
 
     app.include_router(
         additional_users_router,
-        prefix="/users",
-        tags=["users"]
     )

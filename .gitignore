@@ -5,6 +5,7 @@
 .vscode
 __pycache__
 .pytest_cache
+static
 htmlcov
 dist
 site

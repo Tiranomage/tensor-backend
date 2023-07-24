@@ -19,10 +19,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self.model = model
 
     async def get(self, db: AsyncSession, *, model_id: uuid.UUID | int) -> ModelType | None:
-        q = select(self.model).where(self.model.id == model_id)
-        result = await db.execute(q)
-        curr = result.scalar()
-        return curr
+        model_obj = await db.get(self.model, model_id)
+        return model_obj
 
     async def get_multi(
             self,
@@ -57,13 +55,18 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         obj_in: UpdateSchemaType | dict[str, Any]
     ) -> ModelType:
         obj_data = jsonable_encoder(db_obj)
+
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
             update_data = obj_in.dict(exclude_unset=True)
+
+        update_data["updated_at"] = datetime.utcnow()
+
         for field in obj_data:
             if field in update_data:
                 setattr(db_obj, field, update_data[field])
+
         db.add(db_obj)
         await db.commit()
         await db.refresh(db_obj)
@@ -72,6 +75,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def delete(self, db: AsyncSession, *, model_id: uuid.UUID | int) -> ModelType:
         db_obj = await self.get(db, model_id=model_id)
         setattr(db_obj, "deleted_at", datetime.utcnow())
+        setattr(db_obj, "updated_at", datetime.utcnow())
 
         db.add(db_obj)
         await db.commit()

@@ -213,7 +213,7 @@ replies = [
 ]
 
 
-async def get_messages(session: AsyncSession):
+async def seed_messages(session: AsyncSession):
     result = []
 
     for seed_chat in chats:
