@@ -5,7 +5,7 @@ from typing import List
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import ForeignKey
-from sqlalchemy import String, DateTime
+from sqlalchemy import String, DateTime, Integer
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -126,6 +126,7 @@ class Tag(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     category_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("categories.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    display: Mapped[str] = mapped_column(String(320), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
@@ -174,6 +175,7 @@ class Category(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(length=320), unique=True, nullable=False)
     external: Mapped[dict] = mapped_column(JSONB, default=lambda: {})
+    order: Mapped[int] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

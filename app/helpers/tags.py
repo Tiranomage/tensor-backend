@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import app_settings
@@ -30,6 +32,7 @@ def _normalize_tags(tags: list[str]) -> list[dict]:
             result.append({
                 'original': original_tag,
                 'normalized': tag,
+                # 'uuid': str(uuid.uuid4()),
             })
             continue
 
@@ -54,6 +57,7 @@ def _normalize_tags(tags: list[str]) -> list[dict]:
         result.append({
             'original': original_tag,
             'normalized': morphed,
+            # 'uuid': str(uuid.uuid4()),
         })
 
     print(result)

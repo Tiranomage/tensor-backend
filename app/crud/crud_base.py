@@ -4,7 +4,7 @@ from typing import Any, Generic, Type, TypeVar
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, null
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import Base
@@ -29,7 +29,15 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             offset: int = 0,
             limit: int = 100
     ) -> list[ModelType]:
-        q = select(self.model).offset(offset).limit(limit)
+        q = select(self.model).offset(offset).limit(limit)\
+            .filter(self.model.deleted_at == null()).order_by()  # Отсекаем удаленные
+
+        if hasattr(self.model, 'order'):
+            q = q.order_by(self.model.order)  # Сортируем
+
+        if hasattr(self.model, 'title'):
+            q = q.order_by(self.model.title)  # Сортируем
+
         result = await db.execute(q)
         curr = list(result.scalars())
         return curr

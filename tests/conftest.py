@@ -52,6 +52,8 @@ async def prepare_seed():  # session: AsyncSession = Depends(override_get_async_
         await seed(session)
         for login in [LOGIN_EMAIL, LOGIN_PHONE]:
             user = (await session.execute(select(User).where(User.email == login))).scalar()
+            if not user:
+                continue
             await session.execute(delete(UserTags).where(UserTags.user_id == user.id))
             await session.delete(user)
         # await session.execute(delete(User).where(User.email == '+79876543210'))
