@@ -15,6 +15,7 @@ from app.shemas import user as user_schemas
 from app.shemas import chat as chat_schemas
 from app.shemas import category as search_schemas
 from app.crud.crud_category import crud_chat_tags, crud_tag
+from fastapi.encoders import jsonable_encoder
 
 chat_router = APIRouter(prefix="/chats", tags=["chats"])
 message_router = APIRouter(prefix="/messages", tags=["messages"])
@@ -247,14 +248,14 @@ async def delete_chat_users(
 #     return message_obj.chat
 #
 #
-@message_router.post("", response_model=chat_schemas.Message)
-async def create_message(
-        message: chat_schemas.MessageCreate,
-        user: User = Depends(current_user),
-        session: AsyncSession = Depends(get_async_session)
-):
-    message_obj = await crud_message.create_user(session, user_id=user.id, obj_in=message)
-    return message_obj
+# @message_router.post("", response_model=chat_schemas.Message)
+# async def create_message(
+#         message: chat_schemas.MessageCreate,
+#         user: User = Depends(current_user),
+#         session: AsyncSession = Depends(get_async_session)
+# ):
+#     message_obj = await crud_message.create_user(session, user_id=user.id, obj_in=message)
+#     return message_obj
 #
 #
 # @message_router.put("", response_model=chat_schemas.Message)
@@ -269,12 +270,12 @@ async def create_message(
 #     return updated_message_obj
 #
 #
-# @message_router.delete("", response_model=chat_schemas.Message)
-# async def delete_message(
-#         message_id: uuid.UUID,
-#         user: User = Depends(current_user),
-#         session: AsyncSession = Depends(get_async_session)
-# ):
-#     message_obj = await crud_message.get(session, model_id=message_id)
-#     deleted_message_obj = await crud_message.delete(session, model_id=message_obj.id)
-#     return deleted_message_obj
+@message_router.delete("", response_model=chat_schemas.Message)
+async def delete_message(
+        message_id: uuid.UUID,
+        user: User = Depends(current_user),
+        session: AsyncSession = Depends(get_async_session)
+):
+    message_obj = await crud_message.get(session, model_id=message_id)
+    deleted_message_obj = await crud_message.remove(session, model_id=message_obj.id)
+    return deleted_message_obj

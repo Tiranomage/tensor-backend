@@ -125,11 +125,13 @@ async def websocket_endpoint(
 
     expire_on = data_decoded['exp']
     user_id = uuid.UUID(data_decoded['sub'])
-
+    print('working')
+    print(user_id)
     await manager.connect(websocket, user_id)
     try:
         while True:
             data = await websocket.receive_json()
+            print(data)
             try:
 
                 async with async_session() as session:
@@ -139,6 +141,7 @@ async def websocket_endpoint(
                         .where(UserChats.chat_id == data['chat_id'])
                     )
                     db_users_set = set(db_users_id)
+
 
 
                     # формируем сообщение, попутно проверяя соответствие полей
