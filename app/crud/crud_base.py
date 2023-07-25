@@ -30,7 +30,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             limit: int = 100
     ) -> list[ModelType]:
         q = select(self.model).offset(offset).limit(limit)\
-            .filter(self.model.deleted_at == null()).order_by()  # Отсекаем удаленные
+            .filter(self.model.deleted_at == null()) # Отсекаем удаленные
 
         if hasattr(self.model, 'order'):
             q = q.order_by(self.model.order)  # Сортируем

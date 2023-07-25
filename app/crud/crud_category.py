@@ -1,8 +1,9 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, null, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import app_settings
 from app.crud.crud_base import CRUDBase
 from app.models.models import Tag, UserTags, ChatTags, Category
 from app.shemas.category import (
@@ -30,6 +31,25 @@ class CRUDTag(CRUDBase[Tag, TagCreate, TagUpdate]):
             tag_obj = await self.create(db, obj_in=tag)
             curr.append(tag_obj)
 
+        return curr
+
+    async def get_multi(
+            self,
+            db: AsyncSession,
+            *,
+            offset: int = 0,
+            limit: int = 1000
+    ) -> list[Tag]:
+
+        q = select(Tag)\
+            .join(Category, and_(Category.id == Tag.category_id,
+                                 Category.id != app_settings.USER_CATEGORY))\
+            .filter(Category.deleted_at == null())\
+            .order_by(Category.order)\
+            .order_by(Tag.display)
+
+        result = await db.execute(q)
+        curr = list(result.scalars())
         return curr
 
 
