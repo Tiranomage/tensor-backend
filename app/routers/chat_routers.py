@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,7 +9,7 @@ from app.helpers.tags import helper_update_chat_tags
 from app.models.db import get_async_session
 
 from app.crud.crud_chat import crud_chat, crud_message, crud_user_chats
-from app.models.models import User, Chat, ChatTags
+from app.models.models import User, Chat, ChatTags, UserRole
 from app.auth import current_user
 
 from app.shemas import user as user_schemas
@@ -138,13 +139,13 @@ async def create_chat(
     chat_obj = await crud_chat.create(session, obj_in=chat)
 
     for user_id in users_id:
-        user_chats_obj = chat_schemas.UserChatsCreate(user_id=user_id, chat_id=chat_obj.id)
+        user_chats_obj = chat_schemas.UserChatsCreate(user_id=user_id, chat_id=chat_obj.id, role=UserRole.admin.value)
         await crud_user_chats.create(session, obj_in=user_chats_obj)
 
     return chat_obj
 
 
-@chat_router.post("/{chat_id}/tags", response_model=list[search_schemas.ChatTags])
+@chat_router.post("/{chat_id}/tags", response_model=list[search_schemas.ChatTags] | dict)
 async def update_chat_tags(
         tags: list[str],  # list[search_schemas.TagCreate],
         chat_id: uuid.UUID,
@@ -153,52 +154,91 @@ async def update_chat_tags(
 ):
     # TODO: Проверка, что устанавливаются теги для доступного (по правам) чата/группы
 
-    chat_obj = await crud_chat.get(session, model_id=chat_id)
-    return await helper_update_chat_tags(tags, chat_obj, session)
+    user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
+
+    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value and user_chats_obj.role != UserRole.moderator.value:
+        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    else:
+        chat_obj = await crud_chat.get(session, model_id=chat_id)
+        return await helper_update_chat_tags(tags, chat_obj, session)
 
 
-@chat_router.put("/{chat_id}", response_model=chat_schemas.Chat)
+@chat_router.put("/{chat_id}", response_model=chat_schemas.Chat | dict)
 async def update_chat(
         chat_id: uuid.UUID,
         chat: chat_schemas.ChatUpdate,
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    chat_obj = await crud_chat.get(session, model_id=chat_id)
-    updated_chat_obj = await crud_chat.update(session, db_obj=chat_obj, obj_in=chat)
-    return updated_chat_obj
+    user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
+
+    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value and user_chats_obj.role != UserRole.moderator.value:
+        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    else:
+        chat_obj = await crud_chat.get(session, model_id=chat_id)
+        updated_chat_obj = await crud_chat.update(session, db_obj=chat_obj, obj_in=chat)
+        return updated_chat_obj
 
 
 @chat_router.put("/{chat_id}/users")
 async def add_chat_users(
         chat_id: uuid.UUID,
-        users_id: list[uuid.UUID],
+        users: list[chat_schemas.ChatUsers],
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    for user_id in users_id:
-        user_chats_obj = chat_schemas.UserChatsCreate(user_id=user_id, chat_id=chat_id)
+    for user in users:
+        user_chats_obj = chat_schemas.UserChatsCreate(user_id=user.user_id, chat_id=chat_id, role=user.role)
         await crud_user_chats.create(session, obj_in=user_chats_obj)
 
 
-@chat_router.delete("/{chat_id}", response_model=chat_schemas.Chat)
+@chat_router.put("/{chat_id}/users/role", response_model=None | dict)
+async def update_chat_users_role(
+        chat_id: uuid.UUID,
+        users: list[chat_schemas.ChatUsers],
+        user: User = Depends(current_user),
+        session: AsyncSession = Depends(get_async_session)
+):
+    user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
+
+    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value:
+        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    else:
+        for user in users:
+            user_chats_obj = crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.user_id)
+            setattr(user_chats_obj, "role", user.role)
+            await crud_user_chats.update(session, obj_in=user_chats_obj)
+
+
+@chat_router.delete("/{chat_id}", response_model=chat_schemas.Chat | dict)
 async def delete_chat(
         chat_id: uuid.UUID, user: User = Depends(current_user), session: AsyncSession = Depends(get_async_session)
 ):
-    deleted_chat_obj = await crud_chat.delete(session, model_id=chat_id)
-    return deleted_chat_obj
+    user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
+
+    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value:
+        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    else:
+        deleted_chat_obj = await crud_chat.delete(session, model_id=chat_id)
+        return deleted_chat_obj
 
 
-@chat_router.delete("/{chat_id}/users")
+#92628958-6e50-45c8-aa5c-603622ac7ed8
+@chat_router.delete("/{chat_id}/users", response_model=None | dict)
 async def delete_chat_users(
         chat_id: uuid.UUID,
         users_id: list[uuid.UUID],
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    for user_id in users_id:
-        user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user_id)
-        deleted_user_chats_obj = await crud_user_chats.delete(session, model_id=user_chats_obj.id)
+    user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
+
+    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value:
+        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    else:
+        for user_id in users_id:
+            user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user_id)
+            deleted_user_chats_obj = await crud_user_chats.delete(session, model_id=user_chats_obj.id)
 
 
 #####################
@@ -247,14 +287,14 @@ async def delete_chat_users(
 #     return message_obj.chat
 #
 #
-@message_router.post("", response_model=chat_schemas.Message)
-async def create_message(
-        message: chat_schemas.MessageCreate,
-        user: User = Depends(current_user),
-        session: AsyncSession = Depends(get_async_session)
-):
-    message_obj = await crud_message.create_user(session, user_id=user.id, obj_in=message)
-    return message_obj
+# @message_router.post("", response_model=chat_schemas.Message)
+# async def create_message(
+#         message: chat_schemas.MessageCreate,
+#         user: User = Depends(current_user),
+#         session: AsyncSession = Depends(get_async_session)
+# ):
+#     message_obj = await crud_message.create_user(session, user_id=user.id, obj_in=message)
+#     return message_obj
 #
 #
 # @message_router.put("", response_model=chat_schemas.Message)
