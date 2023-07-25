@@ -79,13 +79,13 @@ async def get_recomended_users(
 
 
 
-# #временный метод для обновления тегов пользователей
-# from app.shemas import category as search_schemas
-# @recomendations_router.post("/tags/{user_id}", response_model=list[search_schemas.UserTags])
-# async def update_user_tags(
-#         tags: list[str],  # list[search_schemas.TagCreate],
-#         user_id: uuid.UUID,
-#         session: AsyncSession = Depends(get_async_session)
-# ):
-#     user = await crud_user.get(db=session, model_id=user_id)
-#     return await helper_update_user_tags(tags, user, session)
+#временный метод для обновления тегов пользователей
+from app.shemas import category as search_schemas
+@recomendations_router.post("/tags/{user_id}", response_model=list[search_schemas.UserTags])
+async def update_user_tags(
+        tags: list[str],  # list[search_schemas.TagCreate],
+        user_id: uuid.UUID,
+        session: AsyncSession = Depends(get_async_session)
+):
+    user = await crud_user.get(db=session, model_id=user_id)
+    return await helper_update_user_tags(tags, user, session)
