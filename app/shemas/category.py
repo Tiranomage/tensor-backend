@@ -88,6 +88,7 @@ class ChatTagsDB(BaseModel):
     id: uuid.UUID
     chat_id: uuid.UUID
     tag_id: uuid.UUID
+    title: str
 
     class Config:
         orm_mode = True
