@@ -1,13 +1,14 @@
 import uuid
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.helpers.tags import helper_update_chat_tags
 from app.models.db import get_async_session
 
 from app.crud.crud_chat import crud_chat, crud_message, crud_user_chats
-from app.models.models import User, Chat
+from app.models.models import User, Chat, ChatTags
 from app.auth import current_user
 
 from app.shemas import user as user_schemas
@@ -54,7 +55,7 @@ async def user_chats(
 
 
 @chat_router.get("/{chat_id}/inner", response_model=list[chat_schemas.Chat])
-async def chat_inner(
+async def get_chat_inner(
         chat_id: uuid.UUID,
         offset: int = 0,
         limit: int = 100,
@@ -62,7 +63,7 @@ async def chat_inner(
         session: AsyncSession = Depends(get_async_session)
 ):
     chat_inner = (await session.scalars(
-        select(Chat).where(Chat.parent_id == chat_id or Chat.id == chat_id).offset(offset).limit(limit))).all()
+        select(Chat).where(or_(Chat.parent_id == chat_id, Chat.id == chat_id)).offset(offset).limit(limit))).all()
 
     return chat_inner
 
@@ -113,7 +114,7 @@ async def chat_users(
     return users_obj
 
 
-@chat_router.get("/{chat_id}/tags", response_model=list[chat_schemas.Tag])
+@chat_router.get("/{chat_id}/tags", response_model=list[search_schemas.ChatTags])
 async def chat_tags(
         chat_id: uuid.UUID,
         offset: int = 0,
@@ -121,8 +122,9 @@ async def chat_tags(
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    chat_obj = await crud_chat.get(session, model_id=chat_id)
-    tags_obj = (await session.scalars(chat_obj.tags.statement.offset(offset).limit(limit))).all()
+    # TODO: Проверка, что запрашиваются теги для доступного чата/группы
+    tags_obj = (await session.scalars(
+        select(ChatTags).where(ChatTags.chat_id == chat_id).offset(offset).limit(limit).order_by('title'))).all()
     return tags_obj
 
 
@@ -142,21 +144,17 @@ async def create_chat(
     return chat_obj
 
 
-@chat_router.post("/{chat_id}/tags", response_model=list[search_schemas.Tag])
+@chat_router.post("/{chat_id}/tags", response_model=list[search_schemas.ChatTags])
 async def update_chat_tags(
-        tags: list[search_schemas.TagCreate],
+        tags: list[str],  # list[search_schemas.TagCreate],
         chat_id: uuid.UUID,
         user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
+    # TODO: Проверка, что устанавливаются теги для доступного (по правам) чата/группы
+
     chat_obj = await crud_chat.get(session, model_id=chat_id)
-    tags_obj = await crud_tag.exist_create(session, tags=tags)
-
-    for tag in tags_obj:
-        chat_tags_create = search_schemas.ChatTagsCreate(user_id=chat_obj.id, tag_id=tag.id)
-        await crud_chat_tags.create(session, obj_in=chat_tags_create)
-
-    return tags_obj
+    return await helper_update_chat_tags(tags, chat_obj, session)
 
 
 @chat_router.put("/{chat_id}", response_model=chat_schemas.Chat)
