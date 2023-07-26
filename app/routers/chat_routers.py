@@ -211,9 +211,9 @@ async def update_chat_tags(
 
     if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value, UserRole.moderator.value):
         raise PermissionDenied()
-    else:
-        chat_obj = await crud_chat.get(session, model_id=chat_id)  # сдвинуть влево
-        return await helper_update_chat_tags(tags, chat_obj, session)
+
+    chat_obj = await crud_chat.get(session, model_id=chat_id)  # сдвинуть влево
+    return await helper_update_chat_tags(tags, chat_obj, session)
 
 
 @chat_router.put("/{chat_id}", response_model=chat_schemas.Chat | dict)
@@ -227,10 +227,10 @@ async def update_chat(
 
     if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value, UserRole.moderator.value):
         raise PermissionDenied()
-    else:
-        chat_obj = await crud_chat.get(session, model_id=chat_id)
-        updated_chat_obj = await crud_chat.update(session, db_obj=chat_obj, obj_in=chat)
-        return updated_chat_obj
+
+    chat_obj = await crud_chat.get(session, model_id=chat_id)
+    updated_chat_obj = await crud_chat.update(session, db_obj=chat_obj, obj_in=chat)
+    return updated_chat_obj
 
 
 @chat_router.put("/{chat_id}/users")
@@ -256,11 +256,11 @@ async def update_chat_users_role(
 
     if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value):
         raise PermissionDenied()
-    else:
-        for user in users:
-            user_chats_obj = crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.user_id)
-            setattr(user_chats_obj, "role", user.role)
-            await crud_user_chats.update(session, obj_in=user_chats_obj)
+
+    for user in users:
+        user_chats_obj = crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.user_id)
+        setattr(user_chats_obj, "role", user.role)
+        await crud_user_chats.update(session, obj_in=user_chats_obj)
 
 
 @chat_router.delete("/{chat_id}", response_model=chat_schemas.Chat | dict)
@@ -271,9 +271,9 @@ async def delete_chat(
 
     if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value):
         raise PermissionDenied()
-    else:
-        deleted_chat_obj = await crud_chat.delete(session, model_id=chat_id)
-        return deleted_chat_obj
+
+    deleted_chat_obj = await crud_chat.delete(session, model_id=chat_id)
+    return deleted_chat_obj
 
 
 #92628958-6e50-45c8-aa5c-603622ac7ed8
@@ -288,10 +288,10 @@ async def delete_chat_users(
 
     if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value, UserRole.moderator.value):
         raise PermissionDenied()
-    else:
-        for user_id in users_id:
-            user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user_id)
-            deleted_user_chats_obj = await crud_user_chats.delete(session, model_id=user_chats_obj.id)
+
+    for user_id in users_id:
+        user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user_id)
+        deleted_user_chats_obj = await crud_user_chats.delete(session, model_id=user_chats_obj.id)
 
 
 #####################
