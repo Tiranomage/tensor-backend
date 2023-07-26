@@ -7,6 +7,7 @@ from app.shemas.category import Tag
 
 from enum import Enum
 
+from app.models.models import MessageType
 
 class ChatType(str, Enum):
     private: str = "private"
@@ -39,10 +40,10 @@ class MessageUpdate(MessageBase):
 
 class MessageDB(BaseModel):
     id: uuid.UUID
-    text: str
+    type: MessageType
     user_id: uuid.UUID
     chat_id: uuid.UUID
-    external: dict
+    external: dict | None
 
     class Config:
         orm_mode = True

@@ -1,3 +1,6 @@
+import uuid
+from functools import lru_cache
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import app_settings
@@ -9,16 +12,14 @@ from sqlalchemy import select, delete
 morph = pymorphy2.MorphAnalyzer()
 
 
-def _normalize_tags(tags: list[str]) -> list[dict]:
-    """"""
-    result = []
-    for original_tag in tags:
-        tag = original_tag.lower()
-        # Удаляем все пробельные символы
-        tag = re.sub(r"\s+", "", tag, flags=re.UNICODE)
-        morphed = morph.parse(tag)[0]
+@lru_cache(maxsize=1024, typed=False)
+def _normalize_tag(original_tag: str) -> dict:
+    tag = original_tag.lower()
+    # Удаляем все пробельные символы
+    tag = re.sub(r"\s+", "", tag, flags=re.UNICODE)
+    morphed = morph.parse(tag)[0]
 
-        if morphed.tag.POS not in (
+    if morphed.tag.POS not in (
             'NOUN', 'ADVB', 'NPRO',
             # Глагольные
             'VERB', 'INFN', 'PRTF', 'PRTS',
@@ -26,35 +27,43 @@ def _normalize_tags(tags: list[str]) -> list[dict]:
             'GRND', 'ADJF', 'ADJS', 'COMP',
             # Часи речи, которые никак не преобразуем
             'NUMR', 'PRED', 'PREP', 'CONJ', 'PRCL', 'INTJ'
-        ):
-            result.append({
-                'original': original_tag,
-                'normalized': tag,
-            })
-            continue
-
-        if morphed.tag.POS in ('NOUN', 'ADVB', 'NPRO'):
-            normal = morphed.inflect({'sing', 'nomn', 'neut'})
-            if normal:
-                morphed = normal
-
-        elif morphed.tag.POS in ('VERB', 'INFN', 'PRTF', 'PRTS', 'GRND'):
-            normal = morphed.inflect({'INFN', 'sing', 'nomn', 'neut'})
-            if normal:
-                morphed = normal
-
-        elif morphed.tag.POS in ('ADJF', 'ADJS', 'COMP'):
-            normal = morphed.inflect({'ADJF', 'sing', 'nomn', 'neut'})
-            if normal:
-                morphed = normal
-
-        if morphed:
-            morphed = morphed.word
-
-        result.append({
+    ):
+        return {
             'original': original_tag,
-            'normalized': morphed,
-        })
+            'normalized': tag,
+            # 'uuid': str(uuid.uuid4()),
+        }
+
+    if morphed.tag.POS in ('NOUN', 'ADVB', 'NPRO'):
+        normal = morphed.inflect({'sing', 'nomn', 'neut'})
+        if normal:
+            morphed = normal
+
+    elif morphed.tag.POS in ('VERB', 'INFN', 'PRTF', 'PRTS', 'GRND'):
+        normal = morphed.inflect({'INFN', 'sing', 'nomn', 'neut'})
+        if normal:
+            morphed = normal
+
+    elif morphed.tag.POS in ('ADJF', 'ADJS', 'COMP'):
+        normal = morphed.inflect({'ADJF', 'sing', 'nomn', 'neut'})
+        if normal:
+            morphed = normal
+
+    if morphed:
+        morphed = morphed.word
+
+    return {
+        'original': original_tag,
+        'normalized': morphed,
+        # 'uuid': str(uuid.uuid4()),
+    }
+
+
+def _normalize_tags(tags: list[str]) -> list[dict]:
+    """"""
+    result = []
+    for original_tag in tags:
+        result.append(_normalize_tag(original_tag))
 
     print(result)
     return result

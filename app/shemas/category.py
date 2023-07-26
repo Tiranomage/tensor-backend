@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 class TagBase(BaseModel):
     category_id: uuid.UUID
     title: str
+    display: str
 
 
 class TagCreate(TagBase):
@@ -24,6 +25,7 @@ class TagDB(BaseModel):
     id: uuid.UUID
     category_id: uuid.UUID
     title: str = Field(max_length=320)
+    display: str = Field(max_length=320)
 
     class Config:
         orm_mode = True
@@ -86,6 +88,7 @@ class ChatTagsDB(BaseModel):
     id: uuid.UUID
     chat_id: uuid.UUID
     tag_id: uuid.UUID
+    title: str
 
     class Config:
         orm_mode = True

@@ -8,6 +8,7 @@ from starlette.staticfiles import StaticFiles
 from app.auth import include_auth_router, current_active_user
 from app.config import app_settings
 from app.helpers.files import files_router
+from app.helpers.recomendation import recomendations_router
 from app.models.models import User, Category, Chat
 
 from app.routers.chat_routers import chat_router, message_router
@@ -40,7 +41,7 @@ app.include_router(category_router)
 app.include_router(tag_router)
 app.include_router(ws_router)
 app.include_router(files_router)
-
+app.include_router(recomendations_router)
 
 # @app.on_event("startup")
 # async def startup():

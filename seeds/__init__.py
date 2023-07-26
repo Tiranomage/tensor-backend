@@ -1,23 +1,32 @@
-from typing import Type
+from datetime import datetime
+from typing import Type, Generator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import UserChats, User, Chat, Base, Category
 from seeds.const import password, created_at, today, dt_format, dt_fields, dt_fields2
 from seeds.messages import seed_messages
-from seeds.tags import categories
-from seeds.user_chats import users, chats, user_chats
-from sqlalchemy import func, select
+from seeds.tags import categories, seed_category_tags
+from seeds.user_chats import users, chats, user_chats, get_fake_user_item
+from sqlalchemy import select
 
-async def seed_list(session: AsyncSession, model: Type[Base], items: list):
+from seeds.user_tags import seed_users_tags
+
+
+async def seed_list(session: AsyncSession, model: Type[Base], items: list | Generator):
     for item in items:
-
         db_item = await session.get(model, item['id'])
         if db_item:
-            continue
+            if hasattr(db_item, 'external'):
+                setattr(db_item, 'external', item['external'])
 
-        item = item | dt_fields
-        session.add(model(**item))
+            if hasattr(db_item, 'deleted_at'):
+                setattr(db_item, 'deleted_at',
+                        datetime.utcnow() if item.get('deleted', False) else item.get('deleted_at', None))
+            session.add(db_item)
+        else:
+            item = item | dt_fields
+            session.add(model(**item))
     await session.commit()
 
 
@@ -28,7 +37,7 @@ async def seed(session: AsyncSession):
     :return:
     """
 
-    await seed_list(session, User, users)
+    await seed_list(session, User, get_fake_user_item())
     await seed_list(session, Chat, chats)
 
     for item in user_chats:
@@ -45,3 +54,6 @@ async def seed(session: AsyncSession):
     await seed_messages(session)
 
     await seed_list(session, Category, categories)
+    await seed_category_tags(session)
+
+    await seed_users_tags(session)

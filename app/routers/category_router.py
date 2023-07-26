@@ -22,7 +22,7 @@ class Holder(str, Enum):
 
 
 category_router = APIRouter(prefix="/categories", tags=["categories"])
-tag_router = APIRouter(prefix="/tags", tags=["tags"])
+tag_router = APIRouter(prefix="/tags", tags=["categories"])
 
 
 ######################
@@ -32,23 +32,23 @@ tag_router = APIRouter(prefix="/tags", tags=["tags"])
 
 @category_router.get("", response_model=list[search_schemas.Category])
 async def categories(
-        offset: int = 0,
-        limit: int = 100,
-        user: User = Depends(current_user),
+        # offset: int = 0,
+        # limit: int = 100,
+        # user: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session)
 ):
-    categories_obj = await crud_category.get_multi(session, offset=offset, limit=limit)
+    categories_obj = await crud_category.get_multi(session)
     return categories_obj
 
 
-@category_router.get("/{category_id}", response_model=search_schemas.Category)
-async def category(
-        category_id: uuid.UUID,
-        user: User = Depends(current_user),
-        session: AsyncSession = Depends(get_async_session)
-):
-    category_obj = await crud_category.get(session, model_id=category_id)
-    return category_obj
+# @category_router.get("/{category_id}", response_model=search_schemas.Category, deprecated=True)
+# async def category(
+#         category_id: uuid.UUID,
+#         user: User = Depends(current_user),
+#         session: AsyncSession = Depends(get_async_session)
+# ):
+#     category_obj = await crud_category.get(session, model_id=category_id)
+#     return category_obj
 
 
 # @category_router.get("/{category_id}/tags", response_model=list[search_schemas.Tag])
@@ -64,46 +64,46 @@ async def category(
 #     return tags_obj
 
 
-@category_router.post("", response_model=list[search_schemas.Category])
-async def create_category(
-        categories: list[search_schemas.CategoryCreate],
-        user: User = Depends(current_user),
-        session: AsyncSession = Depends(get_async_session)
-):
-    categories_obj = []
-
-    for category in categories:
-        category_obj = await crud_category.create(session, obj_in=category)
-        categories_obj.append(category_obj)
-
-    return categories_obj
-
-
-@category_router.put("", response_model=search_schemas.Category)
-async def update_category(
-        category_id: uuid.UUID,
-        category: search_schemas.CategoryUpdate,
-        user: User = Depends(current_user),
-        session: AsyncSession = Depends(get_async_session)
-):
-    category_obj = await crud_category.get(session, model_id=category_id)
-    updated_category_obj = await crud_category.update(session, db_obj=category_obj, obj_in=category)
-    return updated_category_obj
-
-
-@category_router.delete("", response_model=list[search_schemas.Category])
-async def delete_category(
-        categories_id: list[uuid.UUID],
-        user: User = Depends(current_user),
-        session: AsyncSession = Depends(get_async_session)
-):
-    deleted_categories_obj = []
-
-    for category_id in categories_id:
-        deleted_category_obj = await crud_category.delete(session, model_id=category_id)
-        deleted_categories_obj.append(deleted_category_obj)
-
-    return deleted_categories_obj
+# @category_router.post("", response_model=list[search_schemas.Category], deprecated=True)
+# async def create_category(
+#         categories: list[search_schemas.CategoryCreate],
+#         user: User = Depends(current_user),
+#         session: AsyncSession = Depends(get_async_session)
+# ):
+#     categories_obj = []
+#
+#     for category in categories:
+#         category_obj = await crud_category.create(session, obj_in=category)
+#         categories_obj.append(category_obj)
+#
+#     return categories_obj
+#
+#
+# @category_router.put("", response_model=search_schemas.Category, deprecated=True)
+# async def update_category(
+#         category_id: uuid.UUID,
+#         category: search_schemas.CategoryUpdate,
+#         user: User = Depends(current_user),
+#         session: AsyncSession = Depends(get_async_session)
+# ):
+#     category_obj = await crud_category.get(session, model_id=category_id)
+#     updated_category_obj = await crud_category.update(session, db_obj=category_obj, obj_in=category)
+#     return updated_category_obj
+#
+#
+# @category_router.delete("", response_model=list[search_schemas.Category], deprecated=True)
+# async def delete_category(
+#         categories_id: list[uuid.UUID],
+#         user: User = Depends(current_user),
+#         session: AsyncSession = Depends(get_async_session)
+# ):
+#     deleted_categories_obj = []
+#
+#     for category_id in categories_id:
+#         deleted_category_obj = await crud_category.delete(session, model_id=category_id)
+#         deleted_categories_obj.append(deleted_category_obj)
+#
+#     return deleted_categories_obj
 
 
 #################
@@ -111,16 +111,16 @@ async def delete_category(
 #################
 
 
-# @tag_router.get("", response_model=list[search_schemas.Tag])
-# async def tags(
-#         offset: int = 0,
-#         limit: int = 100,
-#         user: User = Depends(current_user),
-#         session: AsyncSession = Depends(get_async_session)
-# ):
-#     tags_obj = await crud_tag.get_multi(session, offset=offset, limit=limit)
-#     return tags_obj
-#
+@tag_router.get("", response_model=list[search_schemas.Tag])
+async def tags(
+        # offset: int = 0,
+        # limit: int = 100,
+        # user: User = Depends(current_user),  # Авторизация не нужна
+        session: AsyncSession = Depends(get_async_session)
+):
+    tags_obj = await crud_tag.get_multi(session)
+    return tags_obj
+
 #
 # @tag_router.get("/{tag_id}", response_model=search_schemas.Tag)
 # async def tag(

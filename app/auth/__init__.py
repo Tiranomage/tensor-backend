@@ -74,6 +74,27 @@ async def update_user_tags(
     return await helper_update_user_tags(tags, user, session)
 
 
+@additional_users_router.delete("", response_model=UserRead)
+async def remove_user_by_id(
+        user: User = Depends(current_user), session: AsyncSession = Depends(get_async_session)
+):
+    await session.delete(user)
+    await session.commit()
+    return user
+
+
+user_router = APIRouter(prefix="/user", tags=["user"])
+
+
+@user_router.get("/{id}", response_model=UserRead)
+async def get_user_by_id(
+        id: uuid.UUID, user: User = Depends(current_user), session: AsyncSession = Depends(get_async_session)
+):
+    user = (await session.scalars(select(User).filter(User.id == id))).first()
+    print(user)
+    return user
+
+
 auth_router = APIRouter()
 
 
@@ -135,4 +156,8 @@ def include_auth_router(app: FastAPI) -> None:
 
     app.include_router(
         additional_users_router,
+    )
+
+    app.include_router(
+        user_router,
     )
