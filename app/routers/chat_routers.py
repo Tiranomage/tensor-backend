@@ -112,7 +112,47 @@ async def get_recomended_users(
     result_list = [await crud_user.get(db=db, model_id=i[0]) for i in new_recomended_users]
     return result_list
 
+@chat_router.get("/recomended/events", response_model=None)
+async def get_recomended_events(
+        # user:list,
+        # events:list[dict],
+        offset: int = 0,
+        limit: int = 1000,
+        user: User = Depends(current_user), db: AsyncSession = Depends(get_async_session)): #-> list[User]:
+    new_recomended_events = []
 
+    # получаем теги текущего пользователя
+    user_tags = (await db.scalars(user.tags.statement)).all()
+    # print(user_tags)
+    # length_cur_user_tags = len(user_tags)
+    set_cur_user_tags_ids_to_compare = set(tag.id for tag in user_tags)
+
+    all_events_tags_dict = {}
+    all_events = await crud_chat.get_chats_by_type(db=db, chat_type="event")
+
+    cur_user_chats = await crud_user_chats.get_by_parameters(db=db, user_id=user.id)
+
+    # TODO убрать чаты с пользователем
+    # теги, складываем в словарь по событию
+    for event in all_events:
+        if event.id not in cur_user_chats:
+            event_tags = (await db.scalars(event.tags.statement)).all()
+            all_events_tags_dict[event.id] = event_tags
+
+    for event_id, event_tags_list in all_events_tags_dict.items():
+        event_tags_set = set(tag.id for tag in event_tags_list)
+        event_tag_count = len(event_tags_list)
+        intersections = len(set_cur_user_tags_ids_to_compare.intersection(event_tags_set))
+        percent = intersections/event_tag_count
+        new_recomended_events.append((event_id, percent))
+
+    # способ представления данных в new_recomended_events -> [(event_id:percent)]
+    # сортируем по проценту
+    new_recomended_events.sort(key=lambda x: x[1], reverse=True)
+
+    # формируем список событий по их id
+    result_list = [await crud_user.get(db=db, model_id=i[0]) for i in new_recomended_events]
+    return result_list
 
 
 
