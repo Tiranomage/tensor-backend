@@ -41,7 +41,6 @@ app.include_router(tag_router)
 app.include_router(ws_router)
 app.include_router(files_router)
 
-
 # @app.on_event("startup")
 # async def startup():
 #     await database.connect()

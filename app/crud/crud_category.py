@@ -54,6 +54,12 @@ class CRUDTag(CRUDBase[Tag, TagCreate, TagUpdate]):
 
 
 class CRUDUserTags(CRUDBase[UserTags, UserTagsCreate, UserTagsUpdate]):
+    async def get_by_user(self, db: AsyncSession, user_id: uuid.UUID | int) -> list[UserTags]:
+        q = select(self.model).where(self.model.user_id == user_id)
+        result = await db.execute(q)
+        curr = list(result.scalars())
+        return curr
+
     async def get_by_parameters(
             self, db: AsyncSession, *, user_id: uuid.UUID | int, tag_id: uuid.UUID | int
     ) -> UserTags:

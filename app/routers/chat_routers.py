@@ -5,17 +5,20 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.helpers.tags import helper_update_chat_tags
+from app.helpers.tags import helper_update_chat_tags, helper_update_user_tags
 from app.models.db import get_async_session
 
+from app.crud.crud_user import crud_user
 from app.crud.crud_chat import crud_chat, crud_message, crud_user_chats
 from app.models.models import User, Chat, ChatTags, UserRole
+from app.models.models import User, Chat, ChatTags, Tag
 from app.auth import current_user
 
 from app.shemas import user as user_schemas
 from app.shemas import chat as chat_schemas
 from app.shemas import category as search_schemas
 from app.crud.crud_category import crud_chat_tags, crud_tag
+from fastapi.encoders import jsonable_encoder
 
 chat_router = APIRouter(prefix="/chats", tags=["chats"])
 message_router = APIRouter(prefix="/messages", tags=["messages"])
@@ -69,14 +72,61 @@ async def get_chat_inner(
     return chat_inner
 
 
-@chat_router.get("/recommended", response_model=list[chat_schemas.Chat])
-async def recommended_chats(
+
+@chat_router.get("/recomended/users", response_model=list[user_schemas.UserRead])
+async def get_recomended_users(
         offset: int = 0,
-        limit: int = 100,
-        user: User = Depends(current_user),
+        limit: int = 1000,
+        user: User = Depends(current_user), db: AsyncSession = Depends(get_async_session)):
+    new_recomended_users = []
+
+    # получаем теги текущего пользователя
+    user_tags = (await db.scalars(user.tags.statement)).all()
+    # print(user_tags)
+    length_cur_user_tags = len(user_tags)
+    set_cur_user_tags_ids_to_compare = set(tag.id for tag in user_tags)
+
+    # # получаем всех пользователей (а ещё убрать пользователей с которыми уже есть личный чат)
+    all_users_tags_dict = {}
+    all_users = await crud_user.get_multi(db=db, offset=offset,
+                                          limit=limit)
+
+    # теги, складываем в словарь по пользователю
+    for other_user in all_users:
+        # чтобы в рекомендации случайно не попал сам пользователь
+        if other_user.id != user.id:
+            others_tags = (await db.scalars(other_user.tags.statement)).all()
+            all_users_tags_dict[other_user.id] = others_tags
+
+    # проходимся по словарю и для каждого пользователя считаем процент совместимости
+    for other_user_id, other_tags_list in all_users_tags_dict.items():
+        other_tags_set = set(tag.id for tag in other_tags_list)
+        max_tag_count = max(length_cur_user_tags, len(other_tags_list))
+        intersections = len(set_cur_user_tags_ids_to_compare.intersection(other_tags_set))
+        percent = intersections / max_tag_count
+        new_recomended_users.append((other_user_id, percent))
+
+    # способ представления данных в new_recomended_users -> [(user_id:percent)]
+    # сортируем по проценту
+    new_recomended_users.sort(key=lambda x: x[1], reverse=True)
+
+    # формируем список пользователей по их id
+    result_list = [await crud_user.get(db=db, model_id=i[0]) for i in new_recomended_users]
+    return result_list
+
+
+
+
+
+# временный метод для обновления тегов пользователей
+@chat_router.post("/tags/{user_id}", response_model=list[search_schemas.UserTags], deprecated=True)
+async def update_user_tags(
+        tags: list[str],  # list[search_schemas.TagCreate],
+        user_id: uuid.UUID,
         session: AsyncSession = Depends(get_async_session)
 ):
-    pass
+    user = await crud_user.get(db=session, model_id=user_id)
+    return await helper_update_user_tags(tags, user, session)
 
 
 @chat_router.get("/{chat_id}", response_model=chat_schemas.Chat)
@@ -115,7 +165,7 @@ async def chat_users(
     return users_obj
 
 
-@chat_router.get("/{chat_id}/tags", response_model=list[search_schemas.ChatTags])
+@chat_router.get("/{chat_id}/tags", response_model=list[search_schemas.ChatTagsWithCategory])
 async def chat_tags(
         chat_id: uuid.UUID,
         offset: int = 0,
@@ -124,8 +174,9 @@ async def chat_tags(
         session: AsyncSession = Depends(get_async_session)
 ):
     # TODO: Проверка, что запрашиваются теги для доступного чата/группы
-    tags_obj = (await session.scalars(
-        select(ChatTags).where(ChatTags.chat_id == chat_id).offset(offset).limit(limit).order_by('title'))).all()
+    tags_obj = (await session.execute(select(
+        ChatTags.id, ChatTags.chat_id, ChatTags.tag_id, ChatTags.title, Tag.category_id
+    ).join(Tag, Tag.id == ChatTags.tag_id).where(ChatTags.chat_id == chat_id).offset(offset).limit(limit))).all()
     return tags_obj
 
 
@@ -146,6 +197,7 @@ async def create_chat(
 
 
 @chat_router.post("/{chat_id}/tags", response_model=list[search_schemas.ChatTags] | dict)
+@chat_router.post("/{chat_id}/tags", response_model=list[search_schemas.ChatTagsWithCategory])
 async def update_chat_tags(
         tags: list[str],  # list[search_schemas.TagCreate],
         chat_id: uuid.UUID,
@@ -156,10 +208,10 @@ async def update_chat_tags(
 
     user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
 
-    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value and user_chats_obj.role != UserRole.moderator.value:
-        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value and user_chats_obj.role != UserRole.moderator.value:  # not in
+        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}  # raise Exception
     else:
-        chat_obj = await crud_chat.get(session, model_id=chat_id)
+        chat_obj = await crud_chat.get(session, model_id=chat_id)  # сдвинуть влево
         return await helper_update_chat_tags(tags, chat_obj, session)
 
 
@@ -309,12 +361,12 @@ async def delete_chat_users(
 #     return updated_message_obj
 #
 #
-# @message_router.delete("", response_model=chat_schemas.Message)
-# async def delete_message(
-#         message_id: uuid.UUID,
-#         user: User = Depends(current_user),
-#         session: AsyncSession = Depends(get_async_session)
-# ):
-#     message_obj = await crud_message.get(session, model_id=message_id)
-#     deleted_message_obj = await crud_message.delete(session, model_id=message_obj.id)
-#     return deleted_message_obj
+@message_router.delete("", response_model=chat_schemas.Message)
+async def delete_message(
+        message_id: uuid.UUID,
+        user: User = Depends(current_user),
+        session: AsyncSession = Depends(get_async_session)
+):
+    message_obj = await crud_message.get(session, model_id=message_id)
+    deleted_message_obj = await crud_message.remove(session, model_id=message_obj.id)
+    return deleted_message_obj
