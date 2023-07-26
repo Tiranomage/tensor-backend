@@ -5,6 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.exceptions import PermissionDenied
 from app.helpers.tags import helper_update_chat_tags, helper_update_user_tags
 from app.models.db import get_async_session
 
@@ -208,8 +209,8 @@ async def update_chat_tags(
 
     user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
 
-    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value and user_chats_obj.role != UserRole.moderator.value:  # not in
-        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}  # raise Exception
+    if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value, UserRole.moderator.value):
+        raise PermissionDenied()
     else:
         chat_obj = await crud_chat.get(session, model_id=chat_id)  # сдвинуть влево
         return await helper_update_chat_tags(tags, chat_obj, session)
@@ -224,8 +225,8 @@ async def update_chat(
 ):
     user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
 
-    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value and user_chats_obj.role != UserRole.moderator.value:
-        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value, UserRole.moderator.value):
+        raise PermissionDenied()
     else:
         chat_obj = await crud_chat.get(session, model_id=chat_id)
         updated_chat_obj = await crud_chat.update(session, db_obj=chat_obj, obj_in=chat)
@@ -253,8 +254,8 @@ async def update_chat_users_role(
 ):
     user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
 
-    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value:
-        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value):
+        raise PermissionDenied()
     else:
         for user in users:
             user_chats_obj = crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.user_id)
@@ -268,8 +269,8 @@ async def delete_chat(
 ):
     user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
 
-    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value:
-        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value):
+        raise PermissionDenied()
     else:
         deleted_chat_obj = await crud_chat.delete(session, model_id=chat_id)
         return deleted_chat_obj
@@ -285,8 +286,8 @@ async def delete_chat_users(
 ):
     user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
 
-    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value:
-        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    if not user_chats_obj or user_chats_obj.role not in (UserRole.admin.value, UserRole.moderator.value):
+        raise PermissionDenied()
     else:
         for user_id in users_id:
             user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user_id)
