@@ -156,10 +156,10 @@ async def update_chat_tags(
 
     user_chats_obj = await crud_user_chats.get_by_parameters(session, chat_id=chat_id, user_id=user.id)
 
-    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value and user_chats_obj.role != UserRole.moderator.value:
-        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}
+    if not user_chats_obj or user_chats_obj.role != UserRole.admin.value and user_chats_obj.role != UserRole.moderator.value:  # not in
+        return {"detail": "USER DOES NOT HAVE ACCESS TO THIS OPERATION"}  # raise Exception
     else:
-        chat_obj = await crud_chat.get(session, model_id=chat_id)
+        chat_obj = await crud_chat.get(session, model_id=chat_id)  # сдвинуть влево
         return await helper_update_chat_tags(tags, chat_obj, session)
 
 
